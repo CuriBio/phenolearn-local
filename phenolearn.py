@@ -7,12 +7,11 @@ import torch.nn as nn
 import torch.utils.data
 import torch.backends.cudnn as cudnn
 from torch.optim import lr_scheduler
+import torch.nn.functional as F
 
 from torchvision.transforms import Compose, Resize, RandomHorizontalFlip, ToTensor, CenterCrop, Normalize
 import torchvision.datasets as datasets
 import torchvision.models as models
-
-from loss import LossRegression
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -65,7 +64,7 @@ def main(argsIn):
     # NOTE I do not know why the devs chose these values
     normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
-    # Set the input image suze for the network
+    # Set the input image size for the network
     input_image_size = 224
 
     # Derive the size of the input images (in Phenolearn it is a passed in argument)
@@ -461,3 +460,16 @@ def save_checkpoint(state, is_best, filename):
     torch.save(state, filename)
     if is_best:
         shutil.copyfile(filename, os.path.join(outputfolder,'model_best.pth.tar'))
+        
+#%% A custom class for saving a loss regression
+class LossRegression:
+    def __init__(self, reg_weight=0, out_min=-2, out_max=2):
+        self.nll_loss = nn.MSELoss()
+        self.reg_weight = reg_weight
+        self.out_min = out_min
+        self.out_max = out_max
+
+    def __call__(self, outputs, targets):
+
+        loss = self.nll_loss(outputs, targets) +  self.reg_weight*(F.relu(outputs - self.out_max) + F.relu(self.out_min - outputs)).mean()
+        return loss
