@@ -9,9 +9,13 @@ import torch.backends.cudnn as cudnn
 from torch.optim import lr_scheduler
 import torch.nn.functional as F
 
-from torchvision.transforms import Compose, Resize, RandomHorizontalFlip, ToTensor, CenterCrop, Normalize
+from torchvision.transforms import Compose, Resize, RandomHorizontalFlip, ToTensor, CenterCrop, Normalize, ToPILImage
 import torchvision.datasets as datasets
 import torchvision.models as models
+
+from tkinter import Tk
+from tkinter.filedialog import askdirectory
+from pathlib import Path
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -22,10 +26,9 @@ model_names = sorted(name for name in models.__dict__
 augment = True   #Whether to use data augmentation when creating the training set
 traindir = None   #OS directory where the training images are stored
 valdir = None    #OS directory where the validation images are stored
-outputfolder = None    #OS directory where to store the outputs of the network
 precrop_size = None   #Pixel size that the user selected images are
-batch_size = None    #Batch size for SGD
-workers = None   #Num workers (kinda like threads)
+batch_size = 4    #Batch size for SGD
+workers = 1   #Num workers (kinda like threads)
 cpu = True   #Whether to use CPU or GPU for processing
 GPU = not cpu   # Not sure why we need this one but hey, that's what they chose
 do_weighted_sampling = False   #Not sure what this does
@@ -52,13 +55,18 @@ def main(argsIn):
     best_prec1 = 0
 
     # load/define data
-    traindir = None   #os.path.join(args.data, 'Train')
-    valdir = None   #os.path.join(args.data, 'Val')
+    root = Tk()
+    root.wm_attributes('-topmost', 1)
+    targetDataDirectory = askdirectory ()
+    root.destroy()
+        
+    traindir = f'{targetDataDirectory}/train/patches'
+    valdir = f'{targetDataDirectory}/val/patches'
 
     # set output folder path
-    outputfolder = None
-    # if not os.path.exists(args.outputfolder):
-    #     os.makedirs(args.outputfolder)
+    outputfolder = f'{targetDataDirectory}/output'
+    if not os.path.exists(outputfolder):
+        os.makedirs(outputfolder)
 
     # Create the normalization vector
     # NOTE I do not know why the devs chose these values
@@ -68,7 +76,7 @@ def main(argsIn):
     input_image_size = 224
 
     # Derive the size of the input images (in Phenolearn it is a passed in argument)
-    precrop_size = None        
+    precrop_size = 224        
 
     # If images are smaller than or equal to the size of the inputs to the CNN
     if precrop_size <= input_image_size:
@@ -233,6 +241,8 @@ def main(argsIn):
         scheduler = lr_scheduler.ExponentialLR(optimizer, gamma = 0.90)
     else:
         scheduler = lr_scheduler.ExponentialLR(optimizer, gamma = 1.0)
+        
+    start_epoch = 0
 
     for epoch in range(start_epoch, epochs):
 
@@ -263,7 +273,7 @@ def main(argsIn):
             'best_prec1': best_prec1,
             'optimizer' : optimizer.state_dict(),
             'ckp_num_classes': num_classes,
-        }, is_best, filename)
+        }, is_best, filename, outputfolder)
 
 
         print("{0},{1:.4f},{2:.4f},{3:.4f},{4:.4f}".format(epoch+1,prec1_train,loss_train,prec1,loss_val), file=open(progress, "a"))
@@ -362,6 +372,9 @@ def train(train_loader, model, criterion, optimizer, epoch, max_iters_per_epoch,
 
     for i, (input, target) in enumerate(train_loader):
         # WHY ARE WE STOPPING TRAINING EARLY WAHHHHHH
+        # transform = ToPILImage()
+        # sample = transform(input[0])
+        # sample.show()
         if i<max_iters_per_epoch:
 
             #Not sure what this flush is for
@@ -452,7 +465,7 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
         
 #%% A helper function to save a checkpoint every epoch, that can be reloaded if the subsequent epoch is worse than thecurrent
-def save_checkpoint(state, is_best, filename):
+def save_checkpoint(state, is_best, filename, outputfolder):
     if not os.path.exists(outputfolder):
         os.makedirs(outputfolder)
     filename = os.path.join(outputfolder,filename)
@@ -473,3 +486,7 @@ class LossRegression:
 
         loss = self.nll_loss(outputs, targets) +  self.reg_weight*(F.relu(outputs - self.out_max) + F.relu(self.out_min - outputs)).mean()
         return loss
+    
+#%%
+if __name__ == '__main__':
+    main(sys.argv[1:])
