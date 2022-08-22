@@ -19,11 +19,25 @@ from pathlib import Path
 #%%
 
 # directory/
+#       └── train
+#           └── Images
 #             ├── class_x
 #             │   ├── xxx.ext
 #             │   ├── xxy.ext
 #             │   └── ...
-#             │       └── xxz.ext
+#             │   └── xxz.ext
+#             └── class_y
+#                 ├── 123.ext
+#                 ├── nsdf3.ext
+#                 └── ...
+#                 └── asd932_.ext
+#       └── val
+#           └── Images
+#             ├── class_x
+#             │   ├── xxx.ext
+#             │   ├── xxy.ext
+#             │   └── ...
+#             │   └── xxz.ext
 #             └── class_y
 #                 ├── 123.ext
 #                 ├── nsdf3.ext
