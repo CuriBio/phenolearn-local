@@ -352,10 +352,10 @@ def validate(val_loader, model, criterion, regression = False):
                 prec1 = regression_accuracy(output.data, target)
                 top1.update(prec1, input.size(0))
             else:
-                prec1, prec2 = accuracy(output.data, target, topk=(1, 2))
-                top1.update(prec1[0], input.size(0))
+                prec1 = accuracy(output.data, target)
+                top1.update(prec1, input.size(0))
 
-        print('Test: Loss {losses.avg:.3f}\t Prec@1 {top1.avg:.3f}'.format(losses=losses, top1=top1))
+        print(f'Test: Loss {losses.avg:.3f}\t Prec@1 {top1.avg:.3f}')
 
     return top1.avg, losses.avg
 
@@ -402,8 +402,8 @@ def train(train_loader, model, criterion, optimizer, epoch, max_iters_per_epoch,
                 prec1 = regression_accuracy(output.data, target)
                 top1.update(prec1, input.size(0))
             else:
-                prec1, prec2 = accuracy(output, target, topk=(1, 2))
-                top1.update(prec1[0], input.size(0))
+                prec1 = accuracy(output, target)
+                top1.update(prec1, input.size(0))
 
             # compute gradient and do SGD step
             optimizer.zero_grad()
@@ -416,25 +416,18 @@ def train(train_loader, model, criterion, optimizer, epoch, max_iters_per_epoch,
             break
 
 
-    print('Train: Loss {losses.avg:.3f}\t Prec@1 {top1.avg:.3f}'.format(losses=losses, top1=top1))
+    print(f'Train: Loss {losses.avg:.3f}\t Prec@1 {top1.avg:.3f}')
     return top1.avg, losses.avg
 
-#%% Accuracy calculater helper functions (faster ways to do this with built in pytorch libraries)
-def accuracy(output, target, topk=(1,)):
-    """Computes the precision@k for the specified values of k"""
+#%% Accuracy calculater helper functions (faster ways to do this with built in pytorch libraries) 
+def accuracy(output, target):
     with torch.no_grad():
-        maxk = max(topk)
         batch_size = target.size(0)
 
-        _, pred = output.topk(maxk, 1, True, True)
-        pred = pred.t()
-        correct = pred.eq(target.view(1, -1).expand_as(pred))
+        _, pred = output.topk(1, 1)
+        correct = pred[0].eq(target)
 
-        res = []
-        for k in topk:
-            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
-            res.append(correct_k.mul_(100.0 / batch_size))
-        return res
+        return correct.float().sum(0) * (100.0 / batch_size)
 
 
 def regression_accuracy(output, target, pct_close=0.45):

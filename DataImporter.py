@@ -44,6 +44,9 @@ from pathlib import Path
 #                 └── ...
 #                 └── asd932_.ext
 
+# When running the script, navigate to the "Images" folder in both the train and validation folders separately
+# As such, you will need to run the script twice
+
 inputdir = None   # Path to where the images are located
 workers = 1   # Num workers
 patches_rows = 2   # Num rows of patches to make
